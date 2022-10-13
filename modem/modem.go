@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -14,7 +15,7 @@ var (
 	ErrSendingSMS  = errors.New("sms: there was an error while sending the sms")
 )
 
-func GetAllModem() (*map[int]string, error) {
+func GetAllModem() (*map[string]int, error) {
 	cmd := exec.Command("mmcli", "-L")
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -24,14 +25,23 @@ func GetAllModem() (*map[int]string, error) {
 	}
 	modems := strings.Split(out.String(), "\n")
 	modems = modems[:len(modems)-1]
-	var op = make(map[int]string)
+	var op = make(map[string]int)
 	for _, v := range modems {
 		infos := strings.Split(strings.TrimSpace(v), " ")
 		paths := strings.Split(infos[0], "/")
 		number, _ := strconv.Atoi(paths[len(paths)-1])
-		op[number] = infos[len(infos)-1]
+		cmd := exec.Command("mmcli", "-m", strconv.Itoa(number))
+		var stdout bytes.Buffer
+		cmd.Stdout = &stdout
+		if err := cmd.Run(); err != nil {
+			return nil, nil
+		}
+		operator, err := getOperatorName(&stdout)
+		if err != nil {
+			return nil, err
+		}
+		op[operator] = number
 	}
-	fmt.Println(op)
 	return &op, nil
 }
 
@@ -48,6 +58,12 @@ func getSMSNumber(out *bytes.Buffer) (int, error) {
 	return number, nil
 }
 
+func getOperatorName(out *bytes.Buffer) (string, error) {
+	regex := regexp.MustCompile("operator name: (?P<deb>[a-zA-Z]+)")
+	match := regex.FindStringSubmatch(out.String())
+	//fmt.Println(match)
+	return match[1], nil
+}
 func (mod *Modem) SendSMS(sms string, num string) error {
 	initiateCommand := fmt.Sprintf("--messaging-create-sms=number='%s',text='%s'", num, sms)
 	var stdout, stderr bytes.Buffer
