@@ -10,12 +10,17 @@ import (
 	"strings"
 )
 
+type Modem struct {
+	Numero   int
+	Operator string
+}
+
 var (
 	ErrCreatingSMS = errors.New("sms: there was an error while creating the sms")
 	ErrSendingSMS  = errors.New("sms: there was an error while sending the sms")
 )
 
-func GetAllModem() (*map[string]int, error) {
+func GetAllModem() (*map[string]Modem, error) {
 	cmd := exec.Command("mmcli", "-L")
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -25,7 +30,7 @@ func GetAllModem() (*map[string]int, error) {
 	}
 	modems := strings.Split(out.String(), "\n")
 	modems = modems[:len(modems)-1]
-	var op = make(map[string]int)
+	var op = make(map[string]Modem)
 	for _, v := range modems {
 		infos := strings.Split(strings.TrimSpace(v), " ")
 		paths := strings.Split(infos[0], "/")
@@ -40,14 +45,9 @@ func GetAllModem() (*map[string]int, error) {
 		if err != nil {
 			return nil, err
 		}
-		op[operator] = number
+		op[operator] = Modem{Numero: number, Operator: operator}
 	}
 	return &op, nil
-}
-
-type Modem struct {
-	Numero   int
-	Operator string
 }
 
 func getSMSNumber(out *bytes.Buffer) (int, error) {
