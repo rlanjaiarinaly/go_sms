@@ -20,7 +20,7 @@ var (
 	ErrSendingSMS  = errors.New("sms: there was an error while sending the sms")
 )
 
-func GetAllModem() (*map[string]Modem, error) {
+func GetAllModem() (map[string]Modem, error) {
 	cmd := exec.Command("mmcli", "-L")
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -45,9 +45,9 @@ func GetAllModem() (*map[string]Modem, error) {
 		if err != nil {
 			return nil, err
 		}
-		op[operator] = Modem{Numero: number, Operator: operator}
+		op[strings.ToUpper(operator)] = Modem{Numero: number, Operator: operator}
 	}
-	return &op, nil
+	return op, nil
 }
 
 func getSMSNumber(out *bytes.Buffer) (int, error) {
@@ -61,20 +61,23 @@ func getSMSNumber(out *bytes.Buffer) (int, error) {
 func getOperatorName(out *bytes.Buffer) (string, error) {
 	regex := regexp.MustCompile("operator name: (?P<deb>[a-zA-Z]+)")
 	match := regex.FindStringSubmatch(out.String())
-	//fmt.Println(match)
 	return match[1], nil
 }
+
 func (mod *Modem) SendSMS(sms string, num string) error {
-	initiateCommand := fmt.Sprintf("--messaging-create-sms=number='%s',text='%s'", num, sms)
+	sms = strings.Replace(sms, "'", "'\\''", -1)
+	fmt.Println(sms)
+	initiateCommand := fmt.Sprintf("--messaging-create-sms='number=%s,text=\"%s\"'", num, sms)
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command("mmcli", "-m", strconv.Itoa(mod.Numero), initiateCommand)
+	fmt.Println(cmd.String())
 	cmd.Stdin = strings.NewReader(initiateCommand)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		fmt.Println(err, " --> ", stderr.String())
 		return ErrCreatingSMS
 	}
-	fmt.Println(stdout.String())
 	number, _ := getSMSNumber(&stdout)
 	cmd = exec.Command("mmcli", "--sms", strconv.Itoa(number), "--send")
 	cmd.Stderr = &stderr
