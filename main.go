@@ -19,7 +19,7 @@ func main() {
 		"0341542314": message,
 	}
 	for i, v := range messages {
-		telma.SendSMS(v, i)
+		telma.SendSMSToRecipient(v, i)
 	}
 	// fmt.Println(telma.SendSMS(message, "0341542314"))
 

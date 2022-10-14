@@ -3,13 +3,13 @@ package modem
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
+// This is the class Modem containing the necessary informations inside the modem
 type Modem struct {
 	Numero   int
 	Operator string
@@ -22,6 +22,8 @@ var (
 	ErrFetchingSMS = errors.New("sms: failed fetching the sms")
 )
 
+// Fetch the list of the modems connected to the computer, note that mmcli doesn't support 4G and later dongle.
+// This function returns a map of modem, the key is the operator of the sim inserted in the modem in uppercase.
 func GetAllModem() (map[string]Modem, error) {
 	cmd := exec.Command("mmcli", "-L")
 	var out bytes.Buffer
@@ -52,17 +54,6 @@ func GetAllModem() (map[string]Modem, error) {
 	return op, nil
 }
 
-func getSMSNumber(out *bytes.Buffer) (int, error) {
-	s := strings.TrimSpace(out.String())
-	s = strings.Replace(s, " ", "", -1)
-	splitted := strings.Split(s, "/")
-	number, err := strconv.Atoi(splitted[len(splitted)-1])
-	if err != nil {
-		return -1, ErrFetchingSMS
-	}
-	return number, nil
-}
-
 func getOperatorName(out *bytes.Buffer) (string, error) {
 	regex := regexp.MustCompile("operator name: (?P<deb>[a-zA-Z]+)")
 	match := regex.FindStringSubmatch(out.String())
@@ -70,27 +61,4 @@ func getOperatorName(out *bytes.Buffer) (string, error) {
 		return "", ErrNoOperator
 	}
 	return match[1], nil
-}
-
-func (mod *Modem) SendSMS(sms string, num string) error {
-	sms = strings.Replace(sms, "\"", "''", -1)
-	initiateCommand := fmt.Sprintf("--messaging-create-sms=number=%s,text=\"%s\"", num, sms)
-	var stdout, stderr bytes.Buffer
-	cmd := exec.Command("mmcli", "-m", strconv.Itoa(mod.Numero), initiateCommand)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return ErrCreatingSMS
-	}
-	number, err := getSMSNumber(&stdout)
-	if err != nil {
-		return err
-	}
-	cmd = exec.Command("mmcli", "--sms", strconv.Itoa(number), "--send")
-	cmd.Stderr = &stderr
-	err = cmd.Run()
-	if err != nil {
-		return ErrSendingSMS
-	}
-	return nil
 }
