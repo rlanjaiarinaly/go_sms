@@ -65,9 +65,9 @@ func getOperatorName(out *bytes.Buffer) (string, error) {
 }
 
 func (mod *Modem) SendSMS(sms string, num string) error {
-	sms = strings.Replace(sms, "'", "'\\''", -1)
+	sms = strings.Replace(sms, "\"", "''", -1)
 	fmt.Println(sms)
-	initiateCommand := fmt.Sprintf("--messaging-create-sms='number=%s,text=\"%s\"'", num, sms)
+	initiateCommand := fmt.Sprintf("--messaging-create-sms=number=%s,text=\"%s\"", num, sms)
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command("mmcli", "-m", strconv.Itoa(mod.Numero), initiateCommand)
 	fmt.Println(cmd.String())
