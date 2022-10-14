@@ -18,6 +18,8 @@ type Modem struct {
 var (
 	ErrCreatingSMS = errors.New("sms: there was an error while creating the sms")
 	ErrSendingSMS  = errors.New("sms: there was an error while sending the sms")
+	ErrNoOperator  = errors.New("sim: the operator can't be found")
+	ErrFetchingSMS = errors.New("sms: failed fetching the sms")
 )
 
 func GetAllModem() (map[string]Modem, error) {
@@ -39,11 +41,11 @@ func GetAllModem() (map[string]Modem, error) {
 		var stdout bytes.Buffer
 		cmd.Stdout = &stdout
 		if err := cmd.Run(); err != nil {
-			return nil, nil
+			continue
 		}
 		operator, err := getOperatorName(&stdout)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		op[strings.ToUpper(operator)] = Modem{Numero: number, Operator: operator}
 	}
@@ -54,36 +56,40 @@ func getSMSNumber(out *bytes.Buffer) (int, error) {
 	s := strings.TrimSpace(out.String())
 	s = strings.Replace(s, " ", "", -1)
 	splitted := strings.Split(s, "/")
-	number, _ := strconv.Atoi(splitted[len(splitted)-1])
+	number, err := strconv.Atoi(splitted[len(splitted)-1])
+	if err != nil {
+		return -1, ErrFetchingSMS
+	}
 	return number, nil
 }
 
 func getOperatorName(out *bytes.Buffer) (string, error) {
 	regex := regexp.MustCompile("operator name: (?P<deb>[a-zA-Z]+)")
 	match := regex.FindStringSubmatch(out.String())
+	if len(match) < 2 {
+		return "", ErrNoOperator
+	}
 	return match[1], nil
 }
 
 func (mod *Modem) SendSMS(sms string, num string) error {
 	sms = strings.Replace(sms, "\"", "''", -1)
-	fmt.Println(sms)
 	initiateCommand := fmt.Sprintf("--messaging-create-sms=number=%s,text=\"%s\"", num, sms)
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command("mmcli", "-m", strconv.Itoa(mod.Numero), initiateCommand)
-	fmt.Println(cmd.String())
-	cmd.Stdin = strings.NewReader(initiateCommand)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		fmt.Println(err, " --> ", stderr.String())
 		return ErrCreatingSMS
 	}
-	number, _ := getSMSNumber(&stdout)
+	number, err := getSMSNumber(&stdout)
+	if err != nil {
+		return err
+	}
 	cmd = exec.Command("mmcli", "--sms", strconv.Itoa(number), "--send")
 	cmd.Stderr = &stderr
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
-		fmt.Println(stderr.String())
 		return ErrSendingSMS
 	}
 	return nil
