@@ -1,26 +1,23 @@
 package main
 
 import (
-	"SMS/modem"
+	"SMS/service"
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func main() {
+	// modems, _ := modem.GetAllModem()
+	router := mux.NewRouter()
 
-	/* 	mod := modem.Modem{
-	   		Numero:   0,
-	   		Operator: "telma",
-	   	}
-	   	sms := fmt.Sprintln("Hello \nYour message contains some lines")
-	   	fmt.Println(mod.SendSMS(sms, "0341542314")) */
-	modems, _ := modem.GetAllModem()
-	telma := modems["TELMA"]
-	message := "This is a \"message\" , \n with quotes"
-	messages := map[string]string{
-		"0341542314": message,
+	smsC := service.NewSMSController()
+	router.HandleFunc("/send_sms", smsC.Send).Methods("POST")
+	fmt.Println("Server listening on port 3000")
+	err := http.ListenAndServe(":3000", router)
+	if err != nil {
+		log.Fatal(err)
 	}
-	for i, v := range messages {
-		telma.SendSMSToRecipient(v, i)
-	}
-	// fmt.Println(telma.SendSMS(message, "0341542314"))
-
 }
