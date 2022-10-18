@@ -23,6 +23,7 @@ func (smsC *SMSController) Send(w http.ResponseWriter, r *http.Request) {
 	}
 	err := smsC.SMSService.Send(&sms)
 	if err != nil {
+		fmt.Println(err)
 		fmt.Fprintln(w, err)
 	}
 }
