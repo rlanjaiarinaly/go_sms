@@ -17,11 +17,17 @@ import (
 
 func main() {
 	router := mux.NewRouter()
-
+	shown := false
 	erreur := errors.New("initializing all the modems : ")
 	for erreur != nil {
-		fmt.Println(erreur)
+		if !shown {
+			fmt.Println(erreur)
+			shown = true
+		}
 		modems, erreur := models.GetAllModem()
+		if len(modems) == 0 {
+			continue
+		}
 		if erreur != nil {
 			continue
 		}

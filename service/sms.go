@@ -25,5 +25,7 @@ func (smsC *SMSController) Send(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(err)
 		fmt.Fprintln(w, err)
+		return
 	}
+	fmt.Fprintln(w, "SMS successfully sent")
 }

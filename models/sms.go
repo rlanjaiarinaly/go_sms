@@ -13,6 +13,7 @@ type SMS struct {
 	Number   string `schema:"numero"`
 	Content  string `schema:"contenu"`
 	Operator string
+	Token    string `schema:"token"`
 }
 type smsValidator struct {
 	SMSService
@@ -28,6 +29,7 @@ type SMSService interface {
 var (
 	ErrNumberValue  = errors.New("number : the number is invalid")
 	ErrEmptyContent = errors.New("sms : the content is empty")
+	ErrInvalidToken = errors.New("api: unauthorized token")
 	operators       = map[rune]string{'2': "ORANGE", '4': "TELMA", '8': "TELMA", '3': "AIRTEL"}
 )
 
@@ -104,13 +106,20 @@ func runSMSValFunc(sms *SMS, smsValFunc ...smsValFunc) error {
 	return nil
 }
 
+func (smsV *smsValidator) validateToken(sms *SMS) error {
+	if sms.Token != "vyGAba0cm0W7YPcgPicHP7WC8P3KjgjgmeHz0AbPKgo=" {
+		return ErrInvalidToken
+	}
+	return nil
+}
+
 func (smsV *smsValidator) newSMS(sms *SMS) (*SMS, error) {
 	modems, err := GetAllModem()
 	if err != nil {
 		return nil, err
 	}
 
-	if err = runSMSValFunc(sms, smsV.validateNumber, smsV.setOperatorName, smsV.normalizeContent); err != nil {
+	if err = runSMSValFunc(sms, smsV.validateToken, smsV.validateNumber, smsV.setOperatorName, smsV.normalizeContent); err != nil {
 		return nil, err
 	}
 	modem := modems[sms.Operator]
